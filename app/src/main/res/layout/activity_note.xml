@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- ZONE DE SAISIE scrollable au-dessus du bouton -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/btnAction"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- TITRE — 40sp bold blanc -->
+            <EditText
+                android:id="@+id/etTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:hint="Titre"
+                android:textColorHint="#99FFFFFF"
+                android:textColor="#FFFFFF"
+                android:textSize="40sp"
+                android:textStyle="bold"
+                android:inputType="textCapSentences"
+                android:imeOptions="actionNext"
+                android:maxLines="2"
+                android:paddingBottom="12dp" />
+
+            <!-- CONTENU — 14sp normal blanc -->
+            <EditText
+                android:id="@+id/etContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="400dp"
+                android:background="@null"
+                android:hint="Contenu de la note..."
+                android:textColorHint="#99FFFFFF"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:inputType="textMultiLine|textCapSentences"
+                android:gravity="top|start" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- BOUTON "Créer" / "Modifier" — fond noir tout en bas -->
+    <Button
+        android:id="@+id/btnAction"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_alignParentBottom="true"
+        android:background="#000000"
+        android:text="Créer"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:stateListAnimator="@null" />
+
+</RelativeLayout>

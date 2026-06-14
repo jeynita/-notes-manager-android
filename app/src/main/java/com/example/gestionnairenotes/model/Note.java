@@ -30,6 +30,7 @@ public class Note {
     public Note() { }
 
     // Constructeur avec parametres
+    @androidx.room.Ignore
     public Note(String titre, String contenu, String couleur, boolean favori, long date) {
         this.titre   = titre;
         this.contenu = contenu;

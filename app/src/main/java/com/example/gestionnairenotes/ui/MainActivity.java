@@ -156,8 +156,9 @@ public class MainActivity extends AppCompatActivity {
     // ─── Bouton Favoris ──────────────────────────────────────────────────────
     private void initFavoritesButton() {
         btnFavorites.setOnClickListener(v -> {
+
             isFavoritesActive = !isFavoritesActive;
-            etSearch.setText("");
+
             if (isFavoritesActive) {
                 observeFavorites();
             } else {
@@ -169,9 +170,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateFavoritesButtonStyle() {
         if (isFavoritesActive) {
+            btnFavorites.setText("Tout voir");
             btnFavorites.setBackgroundResource(R.drawable.bg_btn_favorites_active);
-            btnFavorites.setTextColor(getResources().getColor(android.R.color.white, null));
+            btnFavorites.setTextColor(getResources().getColor(android.R.color.black, null));
         } else {
+            btnFavorites.setText("Favoris");
             btnFavorites.setBackgroundResource(R.drawable.bg_btn_favorites);
             btnFavorites.setTextColor(getResources().getColor(android.R.color.black, null));
         }

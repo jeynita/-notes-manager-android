@@ -13,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -21,6 +22,7 @@ import com.example.gestionnairenotes.R;
 import com.example.gestionnairenotes.adapter.NoteAdapter;
 import com.example.gestionnairenotes.repository.NoteRepository;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.example.gestionnairenotes.model.Note;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -106,6 +108,10 @@ public class MainActivity extends AppCompatActivity {
             repository.update(note);
             String msg = note.isFavori() ? "Ajouté aux favoris ★" : "Retiré des favoris";
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        });
+            // Pour supprimer une note
+        adapter.setOnNoteLongClickListener(note -> {
+            showDeleteConfirmationDialog(note);
         });
     }
 
@@ -311,4 +317,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    // Fonction pour supprimer
+    private void showDeleteConfirmationDialog(@NonNull Note note) {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Supprimer la note")
+                .setMessage("Es-tu sûre de vouloir supprimer la note \"" + note.getTitre() + "\" ?")
+                .setPositiveButton("Supprimer", (dialog, which) -> {
+                    repository.delete(note); // Supprime de la base de données
+                    Toast.makeText(this, "Note supprimée", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Annuler", null)
+                .show();
+    }
+
 }

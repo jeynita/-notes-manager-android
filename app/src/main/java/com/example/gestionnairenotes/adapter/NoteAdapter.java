@@ -35,6 +35,9 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         void onNoteDoubleTap(Note note);
     }
 
+    public interface OnNoteLongClickListener {
+        void onNoteLongClick(Note note);
+    }
     // ─── Champs ─────────────────────────────────────────────────────────────
     private final Context context;
     private List<Note> noteList;
@@ -52,6 +55,11 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
     // ─── Setters ─────────────────────────────────────────────────────────────
     public void setOnNoteClickListener(OnNoteClickListener l)         { this.clickListener     = l; }
     public void setOnNoteDoubleTapListener(OnNoteDoubleTapListener l) { this.doubleTapListener = l; }
+    private OnNoteLongClickListener mLongClickListener;
+
+    public void setOnNoteLongClickListener(OnNoteLongClickListener listener) {
+        this.mLongClickListener = listener;
+    }
 
     /**
      * Met à jour la liste affichée.
@@ -121,6 +129,15 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
                             if (pos != RecyclerView.NO_ID && doubleTapListener != null)
                                 doubleTapListener.onNoteDoubleTap(noteList.get(pos));
                             return true;
+                        }
+
+                        @Override
+                        public void onLongPress(MotionEvent e) {
+                            int pos = getAdapterPosition();
+                            // On vérifie que la position est valide et qu'un écouteur a été configuré
+                            if (pos != RecyclerView.NO_POSITION && mLongClickListener != null) {
+                                mLongClickListener.onNoteLongClick(noteList.get(pos));
+                            }
                         }
                     });
 

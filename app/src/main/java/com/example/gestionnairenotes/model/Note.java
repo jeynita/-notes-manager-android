@@ -26,10 +26,11 @@ public class Note {
     @ColumnInfo(name = "date")
     private long date;
 
-    // Constructeur vide requis par Room
+    // Constructeur sans parametres
     public Note() { }
 
-    // Constructeur principal
+    // Constructeur avec parametres
+    @androidx.room.Ignore
     public Note(String titre, String contenu, String couleur, boolean favori, long date) {
         this.titre   = titre;
         this.contenu = contenu;
@@ -39,22 +40,48 @@ public class Note {
     }
 
     // Getters
-    public int getId()          { return id; }
-    public String getTitre()    { return titre; }
-    public String getContenu()  { return contenu; }
-    public String getCouleur()  { return couleur; }
-    public boolean isFavori()   { return favori; }
-    public long getDate()       { return date; }
+    public int getId()
+    {
+        return id;
+    }
+    public String getTitre()
+    {
+        return titre;
+    }
+    public String getContenu()  {
+        return contenu;
+    }
+    public String getCouleur()  {
+        return couleur;
+    }
+    public boolean isFavori()   {
+        return favori;
+    }
+    public long getDate()       {
+        return date;
+    }
 
     // Setters
-    public void setId(int id)             { this.id = id; }
-    public void setTitre(String titre)    { this.titre = titre; }
-    public void setContenu(String c)      { this.contenu = c; }
-    public void setCouleur(String c)      { this.couleur = c; }
-    public void setFavori(boolean f)      { this.favori = f; }
-    public void setDate(long date)        { this.date = date; }
+    public void setId(int id)             {
+        this.id = id;
+    }
+    public void setTitre(String titre)    {
+        this.titre = titre;
+    }
+    public void setContenu(String c)      {
+        this.contenu = c;
+    }
+    public void setCouleur(String c)      {
+        this.couleur = c;
+    }
+    public void setFavori(boolean f)      {
+        this.favori = f;
+    }
+    public void setDate(long date)        {
+        this.date = date;
+    }
 
-    // Validation avant sauvegarde
+    // Verification de la validite des donnees
     public boolean isValid() {
         return titre != null  && !titre.trim().isEmpty()
                 && contenu != null && !contenu.trim().isEmpty();

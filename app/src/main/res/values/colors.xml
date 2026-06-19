@@ -2,4 +2,12 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="background">#FFFFFF</color>
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#828282</color>
+    <color name="search_background">#F2F2F2</color>
+    <color name="btn_favorites_bg">#F2F2F2</color>
+    <color name="btn_favorites_text">#000000</color>
+    <color name="item_border">#E0E0E0</color>
 </resources>

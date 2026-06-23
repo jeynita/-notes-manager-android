@@ -81,7 +81,6 @@ public class NoteActivity extends AppCompatActivity {
      * On observe une seule fois puis on retire l'observer (removeObservers).
      */
     private void loadNoteForEditing() {
-        // getNoteById retourne LiveData — on observe une seule fois
         repository.getAllNotes().observe(this, notes -> {
             if (notes == null) return;
             for (Note n : notes) {

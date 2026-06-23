@@ -4,51 +4,51 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
-
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.gestionnairenotes.R;
 import com.example.gestionnairenotes.adapter.NoteAdapter;
-import com.example.gestionnairenotes.model.Note;
 import com.example.gestionnairenotes.repository.NoteRepository;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class MainActivity extends AppCompatActivity {
 
     // ─── Clés Intent partagées avec NoteActivity ─────────────────────────────
-    public static final String EXTRA_NOTE_ID    = "note_id";
+    public static final String EXTRA_NOTE_ID = "note_id";
     public static final String EXTRA_NOTE_COLOR = "note_color";
-    public static final String EXTRA_NOTE_MODE  = "note_mode";
-    public static final String MODE_CREATE      = "create";
-    public static final String MODE_EDIT        = "edit";
+    public static final String EXTRA_NOTE_MODE = "note_mode";
+    public static final String MODE_CREATE = "mode_create";
+    public static final String MODE_EDIT = "mode_edit";
 
     // ─── Vues ────────────────────────────────────────────────────────────────
     private RecyclerView         recyclerView;
-    private TextView             textViewEmptyState; // Modifié ici (TextView à la place du LinearLayout)
+    private TextView             textViewEmptyState;
+    private FloatingActionButton fab;
     private EditText             etSearch;
     private Button               btnFavorites;
-    private FloatingActionButton fab;
 
     // Palette
     private LinearLayout colorPalette;
     private View colorGreen, colorRed, colorBlue, colorYellow, colorOrange, colorGray;
+    private View overlay;
 
     // ─── Logique ─────────────────────────────────────────────────────────────
     private NoteAdapter    adapter;
     private NoteRepository repository;
 
-    private boolean isFavoritesActive = false;
     private boolean isPaletteVisible  = false;
+    private boolean isFavoritesActive = false;
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
     @Override
@@ -71,10 +71,10 @@ public class MainActivity extends AppCompatActivity {
     // ─── Initialisation ──────────────────────────────────────────────────────
     private void initViews() {
         recyclerView       = findViewById(R.id.recyclerView);
-        textViewEmptyState = findViewById(R.id.textViewEmptyState); // Modifié ici
+        textViewEmptyState = findViewById(R.id.textViewEmptyState);
+        fab                = findViewById(R.id.fabAddNote);
         etSearch           = findViewById(R.id.etSearch);
         btnFavorites       = findViewById(R.id.btnFavorites);
-        fab                = findViewById(R.id.fabAddNote); // Modifié ici pour correspondre à l'ID du XML
 
         colorPalette = findViewById(R.id.colorPalette);
         colorGreen   = findViewById(R.id.colorGreen);
@@ -83,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
         colorYellow  = findViewById(R.id.colorYellow);
         colorOrange  = findViewById(R.id.colorOrange);
         colorGray    = findViewById(R.id.colorGray);
+        overlay      = findViewById(R.id.overlay);
     }
 
     private void initRecyclerView() {
@@ -90,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
 
-        // Clic simple → NoteActivity mode modification
+        // Simple click -> modification note
         adapter.setOnNoteClickListener(note -> {
             Intent intent = new Intent(this, NoteActivity.class);
             intent.putExtra(EXTRA_NOTE_ID,    note.getId());
@@ -99,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Double-clic → toggle favori
+        // Double click -> toggle favori
         adapter.setOnNoteDoubleTapListener(note -> {
             note.setFavori(!note.isFavori());
             repository.update(note);
@@ -178,29 +179,63 @@ public class MainActivity extends AppCompatActivity {
 
     // ─── FAB + Palette ───────────────────────────────────────────────────────
     private void initFab() {
-        fab.setOnClickListener(v -> togglePalette());
+        Log.d("NotesApp", "initFab called");
+        fab.setOnClickListener(v -> {
+            Log.d("NotesApp", "FAB clicked");
+            togglePalette();
+        });
+        overlay.setOnClickListener(v -> {
+            Log.d("NotesApp", "Overlay clicked");
+            hidePalette();
+        });
 
-        colorGreen.setOnClickListener(v  -> openCreateNote("#219653"));
-        colorRed.setOnClickListener(v    -> openCreateNote("#EB5757"));
-        colorBlue.setOnClickListener(v   -> openCreateNote("#2F80ED"));
-        colorYellow.setOnClickListener(v -> openCreateNote("#F2C94C"));
-        colorOrange.setOnClickListener(v -> openCreateNote("#F2994A"));
-        colorGray.setOnClickListener(v   -> openCreateNote("#828282"));
+        colorGreen.setOnClickListener(v  -> {
+            Log.d("NotesApp", "colorGreen clicked");
+            openCreateNote("#219653");
+        });
+        colorRed.setOnClickListener(v    -> {
+            Log.d("NotesApp", "colorRed clicked");
+            openCreateNote("#EB5757");
+        });
+        colorBlue.setOnClickListener(v   -> {
+            Log.d("NotesApp", "colorBlue clicked");
+            openCreateNote("#2F80ED");
+        });
+        colorYellow.setOnClickListener(v -> {
+            Log.d("NotesApp", "colorYellow clicked");
+            openCreateNote("#F2C94C");
+        });
+        colorOrange.setOnClickListener(v -> {
+            Log.d("NotesApp", "colorOrange clicked");
+            openCreateNote("#F2994A");
+        });
+        colorGray.setOnClickListener(v   -> {
+            Log.d("NotesApp", "colorGray clicked");
+            openCreateNote("#828282");
+        });
     }
 
     private void togglePalette() {
+        Log.d("NotesApp", "togglePalette called, isPaletteVisible: " + isPaletteVisible);
         if (isPaletteVisible) hidePalette();
         else showPalette();
     }
 
     private void showPalette() {
+        Log.d("NotesApp", "showPalette called");
         isPaletteVisible = true;
+        overlay.setVisibility(View.VISIBLE);
         colorPalette.setVisibility(View.VISIBLE);
+
+        fab.animate().cancel();
+        fab.animate().rotation(45f).setDuration(150).start();
+
         View[] cercles = {colorGreen, colorRed, colorBlue, colorYellow, colorOrange, colorGray};
         for (int i = 0; i < cercles.length; i++) {
             View c = cercles[i];
-            if (c != null) { // Protection anti-crash
-                c.setVisibility(View.VISIBLE); // Rend les cercles visibles
+            if (c != null) {
+                c.animate().cancel();
+                c.setVisibility(View.VISIBLE);
                 c.setAlpha(0f);
                 c.setScaleX(0f);
                 c.setScaleY(0f);
@@ -211,8 +246,34 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void hidePalette() {
+        Log.d("NotesApp", "hidePalette called");
         isPaletteVisible = false;
-        colorPalette.setVisibility(View.GONE);
+        overlay.setVisibility(View.GONE);
+
+        fab.animate().cancel();
+        fab.animate().rotation(0f).setDuration(150).start();
+
+        View[] cercles = {colorGray, colorOrange, colorYellow, colorRed, colorBlue, colorGreen};
+        int count = cercles.length;
+        for (int i = 0; i < count; i++) {
+            View c = cercles[i];
+            if (c != null) {
+                c.animate().cancel();
+                final boolean isLast = (i == count - 1);
+                c.animate()
+                 .alpha(0f)
+                 .scaleX(0f)
+                 .scaleY(0f)
+                 .setDuration(150)
+                 .setStartDelay(i * 30L)
+                 .withEndAction(() -> {
+                     if (isLast) {
+                         colorPalette.setVisibility(View.GONE);
+                     }
+                 })
+                 .start();
+            }
+        }
     }
 
     private void openCreateNote(String hexColor) {
@@ -227,10 +288,10 @@ public class MainActivity extends AppCompatActivity {
     private void updateEmptyState() {
         if (adapter.getItemCount() == 0) {
             recyclerView.setVisibility(View.GONE);
-            textViewEmptyState.setVisibility(View.VISIBLE); // Modifié ici
+            textViewEmptyState.setVisibility(View.VISIBLE);
         } else {
             recyclerView.setVisibility(View.VISIBLE);
-            textViewEmptyState.setVisibility(View.GONE); // Modifié ici
+            textViewEmptyState.setVisibility(View.GONE);
         }
     }
 

@@ -70,6 +70,13 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         notifyDataSetChanged();
     }
 
+    public Note getNoteAt(int position) {
+        if (position >= 0 && position < noteList.size()) {
+            return noteList.get(position);
+        }
+        return null;
+    }
+
     // ─── RecyclerView.Adapter ────────────────────────────────────────────────
     @NonNull
     @Override
@@ -92,6 +99,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         private final CardView       cardNote;
         private final RelativeLayout noteContainer;
         private final TextView       tvTitle;
+        private final TextView       tvContent;
         private final TextView       tvDate;
         private final ImageView      ivStar;
 
@@ -103,6 +111,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             cardNote      = itemView.findViewById(R.id.cardNote);
             noteContainer = itemView.findViewById(R.id.noteContainer);
             tvTitle       = itemView.findViewById(R.id.tvTitle);
+            tvContent     = itemView.findViewById(R.id.tvContent);
             tvDate        = itemView.findViewById(R.id.tvDate);
             ivStar        = itemView.findViewById(R.id.ivStar);
             setupGestureDetector();
@@ -149,6 +158,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
         void bind(Note note) {
             tvTitle.setText(note.getTitre());
+            tvContent.setText(note.getContenu() != null ? note.getContenu() : "");
             tvDate.setText(note.getDate() > 0
                     ? dateFormat.format(new Date(note.getDate())) : "");
             ivStar.setVisibility(note.isFavori() ? View.VISIBLE : View.INVISIBLE);
@@ -157,9 +167,29 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             try {
                 String hex = (note.getCouleur() != null && !note.getCouleur().isEmpty())
                         ? note.getCouleur() : DEFAULT_COLOR;
-                noteContainer.setBackgroundColor(Color.parseColor(hex));
+                int colorVal = Color.parseColor(hex);
+                noteContainer.setBackgroundColor(colorVal);
+
+                boolean isLight = androidx.core.graphics.ColorUtils.calculateLuminance(colorVal) > 0.5;
+                int textColor = isLight ? Color.BLACK : Color.WHITE;
+                int subTextColor = isLight ? Color.parseColor("#555555") : Color.parseColor("#E0E0E0");
+                int dateColor = isLight ? Color.parseColor("#777777") : Color.parseColor("#CCCCCC");
+
+                tvTitle.setTextColor(textColor);
+                tvContent.setTextColor(subTextColor);
+                tvDate.setTextColor(dateColor);
+
+                if (isLight) {
+                    ivStar.setColorFilter(Color.parseColor("#E28500"));
+                } else {
+                    ivStar.setColorFilter(Color.parseColor("#F2C94C"));
+                }
             } catch (IllegalArgumentException e) {
                 noteContainer.setBackgroundColor(Color.parseColor(DEFAULT_COLOR));
+                tvTitle.setTextColor(Color.WHITE);
+                tvContent.setTextColor(Color.parseColor("#E0E0E0"));
+                tvDate.setTextColor(Color.parseColor("#CCCCCC"));
+                ivStar.setColorFilter(Color.parseColor("#F2C94C"));
             }
         }
     }

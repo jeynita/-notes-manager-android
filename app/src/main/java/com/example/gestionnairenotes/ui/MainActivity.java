@@ -1,6 +1,9 @@
 package com.example.gestionnairenotes.ui;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.res.Configuration;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -8,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,6 +19,8 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -22,6 +28,7 @@ import com.example.gestionnairenotes.R;
 import com.example.gestionnairenotes.adapter.NoteAdapter;
 import com.example.gestionnairenotes.repository.NoteRepository;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.example.gestionnairenotes.model.Note;
 
 public class MainActivity extends AppCompatActivity {
@@ -39,6 +46,9 @@ public class MainActivity extends AppCompatActivity {
     private FloatingActionButton fab;
     private EditText             etSearch;
     private Button               btnFavorites;
+    private FloatingActionButton btnSort;
+    private ImageButton          btnThemeToggle;
+    private TextView             tvNotesCount;
 
     // Palette
     private LinearLayout colorPalette;
@@ -52,17 +62,38 @@ public class MainActivity extends AppCompatActivity {
     private boolean isPaletteVisible  = false;
     private boolean isFavoritesActive = false;
 
+    // Constantes de tri
+    private static final int SORT_DATE_DESC = 0;
+    private static final int SORT_DATE_ASC = 1;
+    private static final int SORT_TITLE_ASC = 2;
+    private static final int SORT_TITLE_DESC = 3;
+
+    private int currentSortOption = SORT_DATE_DESC;
+    private java.util.List<Note> currentRawNotes = new java.util.ArrayList<>();
+
     // ─── Lifecycle ───────────────────────────────────────────────────────────
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        SharedPreferences prefs = getSharedPreferences("notes_prefs", MODE_PRIVATE);
+        boolean isDarkMode = prefs.getBoolean("dark_mode", false);
+        if (isDarkMode) {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+        }
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        currentSortOption = prefs.getInt("sort_option", SORT_DATE_DESC);
 
         initViews();
         repository = new NoteRepository(getApplication());
         initRecyclerView();
         initSearchBar();
         initFavoritesButton();
+        initSortButton();
+        initThemeToggle();
         initFab();
         setupBackPressedCallback();
 
@@ -77,6 +108,9 @@ public class MainActivity extends AppCompatActivity {
         fab                = findViewById(R.id.fabAddNote);
         etSearch           = findViewById(R.id.etSearch);
         btnFavorites       = findViewById(R.id.btnFavorites);
+        btnSort            = findViewById(R.id.btnSort);
+        btnThemeToggle     = findViewById(R.id.btnThemeToggle);
+        tvNotesCount       = findViewById(R.id.tvNotesCount);
 
         colorPalette = findViewById(R.id.colorPalette);
         colorGreen   = findViewById(R.id.colorGreen);
@@ -109,31 +143,35 @@ public class MainActivity extends AppCompatActivity {
             String msg = note.isFavori() ? "Ajouté aux favoris ★" : "Retiré des favoris";
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
         });
-            // Pour supprimer une note
+
+        // Appui long -> dialogue d'options (Partager / Supprimer / Annuler)
         adapter.setOnNoteLongClickListener(note -> {
-            showDeleteConfirmationDialog(note);
+            showNoteOptionsDialog(note);
         });
+
+        // Activer le swipe-to-delete
+        setupSwipeToDelete();
     }
 
     // ─── Observers LiveData ───────────────────────────────────────────────────
     private void observeAllNotes() {
         repository.getAllNotes().observe(this, notes -> {
-            adapter.setNotes(notes);
-            updateEmptyState();
+            currentRawNotes = notes;
+            sortAndSetNotes(notes);
         });
     }
 
     private void observeFavorites() {
         repository.getFavorites().observe(this, notes -> {
-            adapter.setNotes(notes);
-            updateEmptyState();
+            currentRawNotes = notes;
+            sortAndSetNotes(notes);
         });
     }
 
     private void observeSearch(String query) {
         repository.searchByTitle(query).observe(this, notes -> {
-            adapter.setNotes(notes);
-            updateEmptyState();
+            currentRawNotes = notes;
+            sortAndSetNotes(notes);
         });
     }
 
@@ -178,11 +216,11 @@ public class MainActivity extends AppCompatActivity {
         if (isFavoritesActive) {
             btnFavorites.setText("Tout voir");
             btnFavorites.setBackgroundResource(R.drawable.bg_btn_favorites_active);
-            btnFavorites.setTextColor(getResources().getColor(android.R.color.black, null));
+            btnFavorites.setTextColor(Color.BLACK);
         } else {
             btnFavorites.setText("Favoris");
             btnFavorites.setBackgroundResource(R.drawable.bg_btn_favorites);
-            btnFavorites.setTextColor(getResources().getColor(android.R.color.black, null));
+            btnFavorites.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
         }
     }
 
@@ -293,15 +331,167 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    // ─── État vide ───────────────────────────────────────────────────────────
+    // ─── Initialisation des nouveaux boutons ─────────────────────────────────
+    private void initSortButton() {
+        btnSort.setOnClickListener(this::showSortPopupMenu);
+    }
+
+    private void initThemeToggle() {
+        SharedPreferences prefs = getSharedPreferences("notes_prefs", MODE_PRIVATE);
+        btnThemeToggle.setOnClickListener(v -> {
+            boolean currentDark = prefs.getBoolean("dark_mode", false);
+            prefs.edit().putBoolean("dark_mode", !currentDark).apply();
+            AppCompatDelegate.setDefaultNightMode(!currentDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
+        });
+
+        // Appliquer l'icône correcte
+        boolean isDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        btnThemeToggle.setImageResource(isDark ? R.drawable.ic_light_mode : R.drawable.ic_dark_mode);
+    }
+
+    // ─── Gestion du tri des notes ───────────────────────────────────────────
+    private void showSortPopupMenu(View anchor) {
+        androidx.appcompat.widget.PopupMenu popup = new androidx.appcompat.widget.PopupMenu(this, anchor);
+        popup.getMenu().add(0, SORT_DATE_DESC, 0, "Date : Récent en premier").setChecked(currentSortOption == SORT_DATE_DESC);
+        popup.getMenu().add(0, SORT_DATE_ASC, 1, "Date : Ancien en premier").setChecked(currentSortOption == SORT_DATE_ASC);
+        popup.getMenu().add(0, SORT_TITLE_ASC, 2, "Titre : A à Z").setChecked(currentSortOption == SORT_TITLE_ASC);
+        popup.getMenu().add(0, SORT_TITLE_DESC, 3, "Titre : Z à A").setChecked(currentSortOption == SORT_TITLE_DESC);
+        
+        popup.getMenu().setGroupCheckable(0, true, true);
+        
+        popup.setOnMenuItemClickListener(item -> {
+            currentSortOption = item.getItemId();
+            getSharedPreferences("notes_prefs", MODE_PRIVATE).edit().putInt("sort_option", currentSortOption).apply();
+            sortAndSetNotes(currentRawNotes);
+            return true;
+        });
+        popup.show();
+    }
+
+    private void sortAndSetNotes(java.util.List<Note> notes) {
+        if (notes == null) {
+            adapter.setNotes(null);
+            updateEmptyState();
+            return;
+        }
+        java.util.List<Note> sortedList = new java.util.ArrayList<>(notes);
+        switch (currentSortOption) {
+            case SORT_DATE_DESC:
+                sortedList.sort((n1, n2) -> Long.compare(n2.getDate(), n1.getDate()));
+                break;
+            case SORT_DATE_ASC:
+                sortedList.sort((n1, n2) -> Long.compare(n1.getDate(), n2.getDate()));
+                break;
+            case SORT_TITLE_ASC:
+                sortedList.sort((n1, n2) -> {
+                    String t1 = n1.getTitre() != null ? n1.getTitre() : "";
+                    String t2 = n2.getTitre() != null ? n2.getTitre() : "";
+                    return t1.compareToIgnoreCase(t2);
+                });
+                break;
+            case SORT_TITLE_DESC:
+                sortedList.sort((n1, n2) -> {
+                    String t1 = n1.getTitre() != null ? n1.getTitre() : "";
+                    String t2 = n2.getTitre() != null ? n2.getTitre() : "";
+                    return t2.compareToIgnoreCase(t1);
+                });
+                break;
+        }
+        adapter.setNotes(sortedList);
+        updateEmptyState();
+    }
+
+    // ─── Swipe-to-delete ─────────────────────────────────────────────────────
+    private void setupSwipeToDelete() {
+        ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                final Note note = adapter.getNoteAt(position);
+                if (note != null) {
+                    repository.delete(note);
+                    Snackbar.make(recyclerView, "Note supprimée", Snackbar.LENGTH_LONG)
+                            .setAction("Annuler", v -> {
+                                repository.insert(note);
+                            })
+                            .setActionTextColor(Color.YELLOW)
+                            .show();
+                }
+            }
+        };
+        new ItemTouchHelper(swipeCallback).attachToRecyclerView(recyclerView);
+    }
+
+    // ─── Appui long dialogue d'options ───────────────────────────────────────
+    private void showNoteOptionsDialog(@NonNull Note note) {
+        String favOption = note.isFavori() ? "Retirer des favoris" : "Ajouter aux favoris ★";
+        String[] options = {"Modifier la note", favOption, "Partager la note", "Supprimer la note", "Annuler"};
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(note.getTitre())
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        Intent intent = new Intent(this, NoteActivity.class);
+                        intent.putExtra(EXTRA_NOTE_ID,    note.getId());
+                        intent.putExtra(EXTRA_NOTE_COLOR, note.getCouleur());
+                        intent.putExtra(EXTRA_NOTE_MODE,  MODE_EDIT);
+                        startActivity(intent);
+                    } else if (which == 1) {
+                        note.setFavori(!note.isFavori());
+                        repository.update(note);
+                        String msg = note.isFavori() ? "Ajouté aux favoris ★" : "Retiré des favoris";
+                        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    } else if (which == 2) {
+                        shareNote(note);
+                    } else if (which == 3) {
+                        showDeleteConfirmationDialog(note);
+                    }
+                })
+                .show();
+    }
+
+    private void shareNote(Note note) {
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("text/plain");
+        String shareBody = note.getTitre() + "\n\n" + note.getContenu();
+        shareIntent.putExtra(Intent.EXTRA_SUBJECT, note.getTitre());
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareBody);
+        startActivity(Intent.createChooser(shareIntent, "Partager la note via"));
+    }
+
+    // ─── État vide & Compteur ───────────────────────────────────────────────
     private void updateEmptyState() {
-        if (adapter.getItemCount() == 0) {
+        int count = adapter.getItemCount();
+        if (count == 0) {
             recyclerView.setVisibility(View.GONE);
             textViewEmptyState.setVisibility(View.VISIBLE);
         } else {
             recyclerView.setVisibility(View.VISIBLE);
             textViewEmptyState.setVisibility(View.GONE);
         }
+
+        String text;
+        if (isFavoritesActive) {
+            if (count == 0) text = "Aucun favori";
+            else if (count == 1) text = "1 favori";
+            else text = count + " favoris";
+        } else {
+            String query = etSearch.getText().toString().trim();
+            if (!query.isEmpty()) {
+                if (count == 0) text = "Aucune note trouvée";
+                else if (count == 1) text = "1 note trouvée";
+                else text = count + " notes trouvées";
+            } else {
+                if (count == 0) text = "Aucune note";
+                else if (count == 1) text = "1 note";
+                else text = count + " notes";
+            }
+        }
+        tvNotesCount.setText(text);
     }
 
     private void setupBackPressedCallback() {
@@ -317,17 +507,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    // Fonction pour supprimer
+
     private void showDeleteConfirmationDialog(@NonNull Note note) {
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Supprimer la note")
                 .setMessage("Es-tu sûre de vouloir supprimer la note \"" + note.getTitre() + "\" ?")
                 .setPositiveButton("Supprimer", (dialog, which) -> {
-                    repository.delete(note); // Supprime de la base de données
+                    repository.delete(note);
                     Toast.makeText(this, "Note supprimée", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Annuler", null)
                 .show();
     }
-
 }
